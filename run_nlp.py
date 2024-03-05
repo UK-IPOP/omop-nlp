@@ -110,6 +110,7 @@ def consume_nlp_pipe(
 ) -> pd.DataFrame:
     """"""
     output: list[dict[str, Union[str, bool, float, datetime]]] = []
+    today = datetime.today()
     for doc, context in track(
         pipe, total=n_items, description="Processing documents..."
     ):
@@ -125,7 +126,7 @@ def consume_nlp_pipe(
                     "entity": ent.text.strip(),
                     "negated": ent._.negex,
                     "score": kb_ent[1],
-                    "nlp_datetime": datetime.now(),
+                    "nlp_date": today,
                 }
                 output.append(results)
     # make into a dataframe
@@ -134,7 +135,11 @@ def consume_nlp_pipe(
 
 def convert_to_nlp_table(results: pd.DataFrame) -> pd.DataFrame:
     """"""
-    ...
+    results["note_nlp_id"] = list(range(1, len(results) + 1))
+    results.drop(columns=["cui", "name", "negated", "score"], inplace=True)
+    results.rename(columns={"entity": "lexical_variant"}, inplace=True)
+    # return this slice as it allows us to order the columns
+    return results[["note_nlp_id", "note_id", "lexical_variant", "nlp_date"]].copy()
 
 
 def run(
@@ -144,10 +149,10 @@ def run(
 ) -> None:
     """"""
 
+    dataset = load_notes(omop_dir=omop_directory)
+
     nlp_model, kb_linker = build_models()
     lookup_table = kb_linker.kb.cui_to_entity
-
-    dataset = load_notes(omop_dir=omop_directory)
 
     text_tuples = convert_to_text_tuples(df=dataset)
 
