@@ -134,12 +134,41 @@ def consume_nlp_pipe(
 
 
 def convert_to_nlp_table(results: pd.DataFrame) -> pd.DataFrame:
-    """"""
+    """Converts the processed results into the NOTE_NLP.csv table.
+
+    Args:
+        results (pd.DataFrame): The processed results as a dataframe
+
+    Returns:
+        pd.DataFrame: The NOTE_NLP.csv table
+    """
     results["note_nlp_id"] = list(range(1, len(results) + 1))
-    results.drop(columns=["cui", "name", "negated", "score"], inplace=True)
-    results.rename(columns={"entity": "lexical_variant"}, inplace=True)
+    results["nlp_system"] = f"scispacy {scispacy.__version__}"
+    results["nlp_date"] = results["nlp_datetime"].dt.date
+    results["term_modifiers"] = results["negated"].apply(
+        lambda x: "Negated=True" if x else "Negated=False"
+    )
+    results.drop(columns=["name", "negated", "score"], inplace=True)
+    results.rename(
+        columns={
+            "entity": "lexical_variant",
+            "cui": "note_nlp_source_concept_id",
+        },
+        inplace=True,
+    )
     # return this slice as it allows us to order the columns
-    return results[["note_nlp_id", "note_id", "lexical_variant", "nlp_date"]].copy()
+    output_cols = [
+        "note_nlp_id",
+        "note_id",
+        "lexical_variant",
+        "nlp_system",
+        "note_nlp_source_concept_id",
+        "nlp_date",
+        "nlp_datetime",
+        "term_modifiers",
+    ]
+    sliced: pd.DataFrame = results[output_cols].copy()  # type: ignore
+    return sliced
 
 
 def run(
