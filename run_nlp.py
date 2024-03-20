@@ -27,7 +27,11 @@ warnings.filterwarnings("ignore")
 
 
 def build_models() -> tuple[Language, EntityLinker]:
-    """"""
+    """Builds the spacy NLP pipeline and scispacy linker object.
+
+    Returns:
+        tuple[Language, EntityLinker]: The spacy NLP pipeline and scispacy linker object
+    """
     console.log("[cyan]Setting up...")
     # load scispacy large biomedical NER model
     # disable everything except the NER model
@@ -65,7 +69,14 @@ def build_models() -> tuple[Language, EntityLinker]:
 
 
 def load_notes(omop_dir: Path) -> pd.DataFrame:
-    """"""
+    """Loads the NOTE.csv table from the OMOP directory.
+
+    Args:
+        omop_dir (Path): The OMOP directory
+
+    Returns:
+        pd.DataFrame: The NOTE.csv table
+    """
     console.log("[cyan]Loading dataset...")
     return pd.read_csv(
         omop_dir / "NOTE.csv",
@@ -77,7 +88,14 @@ def load_notes(omop_dir: Path) -> pd.DataFrame:
 
 
 def convert_to_text_tuples(df: pd.DataFrame) -> list[tuple[str, dict[str, int]]]:
-    """"""
+    """Converts the NOTE.csv table into a list of tuples for NLP pipeline.
+
+    Args:
+        df (pd.DataFrame): The NOTE.csv table
+
+    Returns:
+        list[tuple[str, dict[str, int]]]: The list of tuples for NLP pipeline
+    """
     data: list[tuple[str, dict[str, int]]] = []
     for _, row in df.iterrows():
         note_id: int = int(row["note_id"])
@@ -92,7 +110,17 @@ def build_nlp_pipe(
     n_processes: int,
     batch_size: int,
 ) -> Iterator[tuple[Doc, dict[str, int]]]:
-    """"""
+    """Builds the NLP pipeline.
+
+    Args:
+        nlp (Language): The spacy NLP pipeline
+        text_tuples (list[tuple[str, dict[str, int]]]): The list of tuples for NLP pipeline
+        n_processes (int): The number of processes to use for multi-processing pipeline
+        batch_size (int): The batch size to use for multi-processing pipeline
+
+    Returns:
+        Iterator[tuple[Doc, dict[str, int]]]: The NLP pipeline docs
+    """
     console.log("[cyan]Calling NLP pipeline...")
     doc_tuples = nlp.pipe(
         texts=text_tuples,
@@ -108,9 +136,18 @@ def consume_nlp_pipe(
     lookup: dict[str, Entity],
     n_items: int,
 ) -> pd.DataFrame:
-    """"""
+    """Consumes the NLP pipeline and processes the results.
+
+    Args:
+        pipe (Iterator[tuple[Doc, dict[str, int]]]): The NLP pipeline docs
+        lookup (dict[str, Entity]): The scispacy linker lookup table
+        n_items (int): The number of items in the NLP pipeline
+
+    Returns:
+        pd.DataFrame: The processed results as a dataframe
+    """
     output: list[dict[str, Union[str, bool, float, datetime]]] = []
-    today = datetime.today()
+    timestamp = datetime.now()
     for doc, context in track(
         pipe, total=n_items, description="Processing documents..."
     ):
@@ -126,7 +163,7 @@ def consume_nlp_pipe(
                     "entity": ent.text.strip(),
                     "negated": ent._.negex,
                     "score": kb_ent[1],
-                    "nlp_date": today,
+                    "nlp_datetime": timestamp,
                 }
                 output.append(results)
     # make into a dataframe
@@ -176,8 +213,16 @@ def run(
     n_processes: int,
     batch_size: int,
 ) -> None:
-    """"""
+    """Runs the NLP-NER pipeline on the NOTE.csv table in the OMOP directory.
 
+    Args:
+        omop_directory (Path): The OMOP directory
+        n_processes (int): The number of processes to use for multi-processing pipeline
+        batch_size (int): The batch size to use for multi-processing pipeline
+
+    Returns:
+        None
+    """
     dataset = load_notes(omop_dir=omop_directory)
 
     nlp_model, kb_linker = build_models()
@@ -204,7 +249,15 @@ def run(
 
 
 def main():
-    """"""
+    """Main program entry point.
+
+    document the below argparse arguments
+    Argparse arguments:
+
+    - dir: The OMOP source directory
+    - processes: The number of processes to use for multi-processing pipeline
+    - batch-size: The batch size to use for multi-processing pipeline
+    """
     parser = ArgumentParser(
         prog="run_nlp.py",
         description="""
